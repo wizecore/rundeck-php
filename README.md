@@ -10,7 +10,7 @@ WARNING!!! This API is incomplete, not all functions implemented.
 Invocation
 ==========
 
-<code php>
+```php
 require_once("Rundeck.class.php");
 
 $s = new Rundeck();
@@ -39,4 +39,4 @@ $newJob = new Job("my-new-job");
 $newJob->schedule = "0/5 * * * *";
 $newJob->exec = array("whoami");
 $newJob = $s->create($newJob);
-</code>
+```
