@@ -1,16 +1,4 @@
-rundeck-php
-===========
-
-PHP API to Access Rundeck API - control and create jobs
-
-Based on documentation at http://rundeck.org/docs/api/index.html#
-
-WARNING!!! This API is incomplete, not all functions implemented.
-
-Invocation
-==========
-
-<code php>
+<?php
 require_once("Rundeck.class.php");
 
 $s = new Rundeck();
@@ -34,9 +22,9 @@ while ($s->status($job) == "running") {}
 // All last executions of job
 $executions = $s->last($job);
 
-// Create new job, it will run automatically every 5 minutes
+// Create new job
 $newJob = new Job("my-new-job");
 $newJob->schedule = "0/5 * * * *";
 $newJob->exec = array("whoami");
 $newJob = $s->create($newJob);
-</code>
+?>
