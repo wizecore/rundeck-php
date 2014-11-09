@@ -70,6 +70,11 @@ class JobServer {
 	 */
 	function status($job) {}
 
+	/**
+	 * Delete job
+	 */
+	function delete($job) {}
+
 	static function server($type = "Rundeck") {
 		return new $type();
 	}
@@ -333,6 +338,10 @@ class Rundeck extends JobServer {
 			$job->schedule = join(" ", $pat);
 		}
 
+		if (isset($j->description)) {
+			$job->description = $j->description;
+		}
+
 		return $job;
 	}
 
@@ -476,6 +485,18 @@ class Rundeck extends JobServer {
 			return $l[0]->status;
 		} else {
 			return null;
+		}
+	}
+
+	function delete($job) {
+		$job = is_string($job) ? $this->find($job) : $job;
+		if (!$job->id) {
+			throw new Exception("Job have no id!");
+		}
+
+		$out = $this->xml("/api/5/jobs/delete", "idlist=" . $job->id);
+		if (!$out->deleteJobs->allsuccessful) {
+			throw new Exception("Job " . $job->id . " delete failed");
 		}
 	}
 }
