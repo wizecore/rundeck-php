@@ -7,6 +7,14 @@ Based on documentation at http://rundeck.org/docs/api/index.html#
 
 WARNING!!! This API is incomplete, not all functions implemented.
 
+Requirements
+============
+None. Get yourself recent PHP 5.3+ and it will do.
+Rundeck 2.1+ 
+
+You might want to checkout my script to automatically install and
+configure rundeck https://gist.github.com/huksley/ed30cd723128e4c36406
+
 Invocation
 ==========
 
@@ -40,3 +48,8 @@ $newJob->schedule = "0/5 * * * *";
 $newJob->exec = array("whoami");
 $newJob = $s->create($newJob);
 ```
+
+License
+=======
+
+Code is licensed under Apache License v.2
