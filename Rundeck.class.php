@@ -162,11 +162,9 @@ class Rundeck extends JobServer {
 	 * @var string
 	 */
 	var $url = "http://localhost:4440";
-	var $http = null;
 	var $jobs = null; // cache for one invocation, pretty slow
 
 	function __construct() {
-		$this->http = new HttpClient("", 80);
 	}
 
 	function xml($url, $post = null) {
@@ -175,7 +173,7 @@ class Rundeck extends JobServer {
 		}
 
 		if (!$this->project) {
-			throw new Exception("Rundeck requires project name!")
+			throw new Exception("Rundeck requires project name!");
 		}
 
 		$url = $this->url . $url;
@@ -188,8 +186,9 @@ class Rundeck extends JobServer {
 		$options = array(
 			"http" => array()
 		);
-		$options["http"]["method"] == $post != null ? "POST" : "GET";
+		$options["http"]["method"] = $post != null ? "POST" : "GET";
 		if ($post) {
+			$options["http"]["header"] = "Content-Type: application/x-www-form-urlencoded";
 			$options["http"]["content"] = $post;
 		}
 		$ctx = stream_context_create($options);
@@ -338,7 +337,7 @@ class Rundeck extends JobServer {
 	}
 
 	function create($job) {
-		if ($job->id) {
+		if (isset($job->id)) {
 			throw new Exception("Job already have id: " . $job->id . ", refusing to register!");
 		}
 
@@ -376,13 +375,15 @@ class Rundeck extends JobServer {
 			$xml .= "</command>";
 		}
 		$xml .= "</sequence>";
-		$xml .= "<description>" . ($this->description ? $this->description : "") . "</description>";
+		$xml .= "<description>" . (isset($job->description) ? $job->description : "") . "</description>";
 		$xml .= "<name>" . $job->name . "</name>";
 		$xml .= "<context>";
 		$xml .= "<project>" . $this->project . "</project>";
 		$xml .= "</context>";
 		$xml .= "</job>";
 		$xml .= "</joblist>";
+		
+		// Send it as xmlBatch POST field
 		$xml = "xmlBatch=" . urlencode($xml);
 		$out = $this->xml("/api/1/jobs/import", $xml);
 		if ($out && $out->succeeded && $out->succeeded->job) {

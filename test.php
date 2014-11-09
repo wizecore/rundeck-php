@@ -11,7 +11,7 @@ $s->project = "my-project";
 $jobs = $s->jobs();
 
 // Return complete job info, including scheduling (if any) and execution script
-$job = $s->job($job[0]);
+$job = $s->job($jobs[0]);
 
 // Invoke job now
 $execution = $s->run($job);
@@ -23,7 +23,7 @@ while ($s->status($job) == "running") {}
 $executions = $s->last($job);
 
 // Create new job
-$newJob = new Job("my-new-job");
+$newJob = new Job("my-new-job2");
 $newJob->schedule = "0/5 * * * *";
 $newJob->exec = array("whoami");
 $newJob = $s->create($newJob);
