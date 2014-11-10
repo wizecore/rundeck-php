@@ -108,6 +108,21 @@ class Job {
 	 */
 	var $description = "";
 
+	/**
+	 * URLs to call when successfully executed
+	 */
+	var $notifySuccess = array();
+
+	/**
+	 * URLs to call when failure to execute
+	 */
+	var $notifyFailure = array();
+
+	/**
+	 * URLs to call when job started
+	 */
+	var $notifyStart = array();
+
 	function __construct($name) {
 		$this->name = $name;
 	}
@@ -237,7 +252,9 @@ class Rundeck extends JobServer {
 		if ($domNode->attributes)
 		while ($domNode->attributes->length) {
 			$attr = $domNode->attributes->item(0);
-    		$domNode->appendChild($domNode->ownerDocument->createElement($attr->nodeName, $attr->nodeValue));
+			// nodeValue is already all entities have processed, but on createElement - need to escape
+			$val = htmlspecialchars($attr->nodeValue);
+    		$domNode->appendChild($domNode->ownerDocument->createElement($attr->nodeName, $val));
     		$domNode->removeAttributeNode($attr);
 		}
 
@@ -330,38 +347,59 @@ class Rundeck extends JobServer {
 			// Your average crontab mask
 			$pat[] = $j->schedule->time->minute;
 			$pat[] = $j->schedule->time->hour;
-			$pat[] = "*";
+			$pat[] = isset($j->schedule->month->day) ? $j->schedule->month->day : "*";
 			$pat[] = $j->schedule->month->month;
-			$pat[] = $j->schedule->weekday->day; // MUST BE *
+			if (isset($j->schedule->weekday) && isset($j->schedule->weekday->day)) {
+				$pat[] = $j->schedule->weekday->day;
+			} else {
+				$pat[] = "*";
+			}
 			$pat[] = $j->schedule->year->year;
 
 			$job->schedule = join(" ", $pat);
 		}
 
-		if (isset($j->description)) {
+		if ($j->notification && $j->notification->onsuccess && $j->notification->onsuccess->webhook) {
+			$urls = explode(",", $j->notification->onsuccess->webhook->urls);
+			$job->notifySuccess = $urls;
+		}
+
+		if ($j->notification && $j->notification->onfailure && $j->notification->onfailure->webhook) {
+			$urls = explode(",", $j->notification->onfailure->webhook->urls);
+			$job->notifyFailure = $urls;
+		}
+
+		if ($j->notification && $j->notification->onstart && $j->notification->onstart->webhook) {
+			$urls = explode(",", $j->notification->onstart->webhook->urls);
+			$job->notifyStart = $urls;
+		}
+
+		if (isset($j->description) && is_string($j->description)) {
 			$job->description = $j->description;
 		}
 
 		return $job;
 	}
 
-	function create($job) {
-		if (isset($job->id)) {
-			throw new Exception("Job already have id: " . $job->id . ", refusing to register!");
-		}
-
+	function createXML($job) {
 		$xml = "";
 		$xml .= "<joblist>";
 		$xml .= "<job>";
 		
 		if ($job->schedule) {
     		$xml .= "<schedule>";
-    		$pat = explode(" ", $job->schedule);
-			$xml .= "<time seconds='0' minute='" . $pat[0] . "' hour='" . $pat[1] . "' />";
-			//$xml .= "< month='" . $pat[2] . "' />";	
-			$xml .= "<weekday day='" . $pat[3] . "' />";
-			$xml .= "<month month='" . $pat[2] . "' />";
-			$xml .= "<year year='" . $pat[4] . "' />";
+    		list ($min, $hour, $dayofmonth, $month, $dayofweek, $year) = explode(" ", $job->schedule);
+			$xml .= "<time seconds='0' minute='" . $min . "' hour='" . $hour . "' />";
+			if ($dayofmonth == "*") {
+				$dayofweek = "?"; // these are exclusive in rundeck
+			}
+			if ($dayofweek != "*" && $dayofweek != "*") {
+				$xml .= "<weekday day='" . $dayofweek . "' />";
+			} else {
+				$xml .= "<dayofmonth/>";
+			}
+			$xml .= "<month month='" . $month . "' day='" . $dayofmonth . "'/>";
+			$xml .= "<year year='" . $year . "' />";
 			$xml .= "</schedule>";
 		}
 
@@ -389,9 +427,43 @@ class Rundeck extends JobServer {
 		$xml .= "<context>";
 		$xml .= "<project>" . $this->project . "</project>";
 		$xml .= "</context>";
+
+		$xml .= "<notification>";
+		
+		$urls = join(",", $job->notifyStart);
+		if ($urls) {
+			$xml .= "<onstart>";
+			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+			$xml .= "</onstart>";
+		}
+
+		$urls = join(",", $job->notifyFailure);
+		if ($urls) {
+			$xml .= "<onfailure>";
+			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+			$xml .= "</onfailure>";
+		}
+
+		$urls = join(",", $job->notifySuccess);
+		if ($urls) {
+			$xml .= "<onsuccess>";
+			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+			$xml .= "</onsuccess>";
+		}
+		
+		$xml .= "</notification>";
+
 		$xml .= "</job>";
 		$xml .= "</joblist>";
-		
+		return $xml;
+	}
+
+	function create($job) {
+		if (isset($job->id)) {
+			throw new Exception("Job already have id: " . $job->id . ", refusing to register!");
+		}
+
+		$xml = $this->createXML($job);
 		// Send it as xmlBatch POST field
 		$xml = "xmlBatch=" . urlencode($xml);
 		$out = $this->xml("/api/1/jobs/import", $xml);
