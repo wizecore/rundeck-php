@@ -359,17 +359,17 @@ class Rundeck extends JobServer {
 			$job->schedule = join(" ", $pat);
 		}
 
-		if ($j->notification && $j->notification->onsuccess && $j->notification->onsuccess->webhook) {
+		if (isset($j->notification) && isset($j->notification->onsuccess) && $j->notification->onsuccess->webhook) {
 			$urls = explode(",", $j->notification->onsuccess->webhook->urls);
 			$job->notifySuccess = $urls;
 		}
 
-		if ($j->notification && $j->notification->onfailure && $j->notification->onfailure->webhook) {
+		if (isset($j->notification) && isset($j->notification->onfailure) && $j->notification->onfailure->webhook) {
 			$urls = explode(",", $j->notification->onfailure->webhook->urls);
 			$job->notifyFailure = $urls;
 		}
 
-		if ($j->notification && $j->notification->onstart && $j->notification->onstart->webhook) {
+		if (isset($j->notification) && isset($j->notification->onstart) && $j->notification->onstart->webhook) {
 			$urls = explode(",", $j->notification->onstart->webhook->urls);
 			$job->notifyStart = $urls;
 		}
@@ -428,30 +428,32 @@ class Rundeck extends JobServer {
 		$xml .= "<project>" . $this->project . "</project>";
 		$xml .= "</context>";
 
-		$xml .= "<notification>";
-		
-		$urls = join(",", $job->notifyStart);
-		if ($urls) {
-			$xml .= "<onstart>";
-			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
-			$xml .= "</onstart>";
-		}
+		if ((count($job->notifyStart) + count($job->notifySuccess) + count($job->notifyFailure)) > 0) {		
+			$xml .= "<notification>";
 
-		$urls = join(",", $job->notifyFailure);
-		if ($urls) {
-			$xml .= "<onfailure>";
-			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
-			$xml .= "</onfailure>";
-		}
+			$urls = join(",", $job->notifyStart);
+			if ($urls) {
+				$xml .= "<onstart>";
+				$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+				$xml .= "</onstart>";
+			}
 
-		$urls = join(",", $job->notifySuccess);
-		if ($urls) {
-			$xml .= "<onsuccess>";
-			$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
-			$xml .= "</onsuccess>";
-		}
+			$urls = join(",", $job->notifyFailure);
+			if ($urls) {
+				$xml .= "<onfailure>";
+				$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+				$xml .= "</onfailure>";
+			}
+
+			$urls = join(",", $job->notifySuccess);
+			if ($urls) {
+				$xml .= "<onsuccess>";
+				$xml .= "<webhook urls='" . htmlspecialchars($urls) . "' />";
+				$xml .= "</onsuccess>";
+			}
 		
-		$xml .= "</notification>";
+			$xml .= "</notification>";
+		}
 
 		$xml .= "</job>";
 		$xml .= "</joblist>";
